@@ -1,11 +1,30 @@
 #[allow(dead_code)]
+#[allow(unused)]
+#[allow(unused_imports)]
+
+use volatile::Volatile;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
+
+#[allow(dead_code)]
 pub enum Color {
     Black = 0,
     Blue = 1,
-    GReen = 2,
+    Green = 2,
     Cyan = 3,
+    Red = 4,
+    Magneta = 5,
+    Brown = 6,
+    LightGray = 8,
+    LightBlue = 9,
+    LightCyan = 11,
+    LightGreen = 10,
+    LightRed = 12,
+    Pink = 13,
+    Yellow = 14,
+    White  = 15,
+
 }
 
 
@@ -33,11 +52,12 @@ const BUFFER_HEIGHT:usize = 25;
 
 #[repr(transparent)]
 struct Buffer {
-    chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 pub struct Writer {
     column_position: usize,
+    row_position: usize,
     color_code: ColorCode,
     buffer: &'static mut Buffer,
 }
@@ -52,11 +72,11 @@ impl Writer {
                     self.new_line();
                 }
 
-                let row = BUFFER_HEIGHT - 1;
+                let row = self.row_position;
                 let col = self.column_position;
 
                 let color_code = self.color_code.0;
-                self.buffer.chars[row][col] = ScreenChar { ascii_character: byte, color_code };
+                self.buffer.chars[row][col].write(ScreenChar { ascii_character: byte, color_code });
                 self.column_position += 1;
             }
         }
@@ -69,16 +89,23 @@ impl Writer {
                 _ => self.write_byte(0xfe),
             }
         }
-    }
+    }   
 
     fn new_line(&mut self) {
-        todo!()
+       self.column_position = 0;
+       if self.row_position < BUFFER_HEIGHT -1 {
+        self.row_position +=1;
+       } else {
+        self.row_position = 0; 
+       }
     }
 }
 
+#[allow(unused)]
 pub fn print_something() {
     let mut writer = Writer {
         column_position: 0,
+        row_position: 0,
         color_code: ColorCode::new(Color::Blue, Color::Black),
         buffer: unsafe{ &mut *(0xb8000 as *mut Buffer)},
     };
@@ -86,5 +113,37 @@ pub fn print_something() {
     writer.write_byte(b'H');
     writer.write_string("ello");
     writer.write_string("World!");
+    
+
+}
+
+pub fn print_byte(text: u8, position: usize) {
+    let mut byte_writer = Writer {
+        column_position:position,
+        row_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        buffer: unsafe {&mut *(0xb8000 as *mut Buffer)},
+    };
+
+    byte_writer.write_byte(text);
+}
+
+
+pub fn print_string(text: &'static str, position: usize) {
+
+    let mut string_writer = Writer {
+        column_position: position,
+        row_position: 1,
+       color_code: ColorCode::new(Color::Yellow, Color::Black),
+       buffer: unsafe {&mut *(0xb8000 as *mut Buffer)},
+
+    };
+
+    for byte in text.bytes() {
+            match byte {
+                0x20..=0x7e | b'\n' => string_writer.write_byte(byte),
+                _ => string_writer.write_byte(0xfe),
+            }
+    }
 
 }
