@@ -6,7 +6,8 @@ use core::panic::PanicInfo;
 
 /// This function is called on panic.
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
+    print_one!("{info}");
     loop {}
 }
 
@@ -15,7 +16,8 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    vga_buffer::print_byte(b'h', 0);
-    vga_buffer::print_string("Welcome to Rust OS",0);
-    loop {}
+    print_one!("Hello");
+    print_one!();
+    print_one!("Rust");
+    panic!("Some panic message");
 }

@@ -1,3 +1,7 @@
+use core::fmt::{self, Result, Write};
+use lazy_static::lazy_static;
+use spin::Mutex;
+
 #[allow(dead_code)]
 #[allow(unused)]
 #[allow(unused_imports)]
@@ -62,7 +66,19 @@ pub struct Writer {
     buffer: &'static mut Buffer,
 }
 
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        column_position: 0,
+        row_position: 6,
+        color_code: ColorCode::new(Color::Green, Color::Black),
+        buffer: unsafe {
+            &mut *(0xb8000 as *mut Buffer)
+        },
+    });
+}
 
+
+#[allow(unused)]
 impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
@@ -99,24 +115,34 @@ impl Writer {
         self.row_position = 0; 
        }
     }
+
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code.0,
+        };
+
+        for col in 0..BUFFER_WIDTH {
+            self.buffer.chars[row][col].write(blank);
+        }
+    }
 }
 
 #[allow(unused)]
 pub fn print_something() {
     let mut writer = Writer {
         column_position: 0,
-        row_position: 0,
-        color_code: ColorCode::new(Color::Blue, Color::Black),
+        row_position: 4,
+        color_code: ColorCode::new(Color::LightGreen, Color::Black),
         buffer: unsafe{ &mut *(0xb8000 as *mut Buffer)},
     };
 
-    writer.write_byte(b'H');
-    writer.write_string("ello");
-    writer.write_string("World!");
     
+    writeln!(writer, "This is from write macro and the numbers are {}, {}", 42,3.14);
 
 }
 
+#[allow(unused)]
 pub fn print_byte(text: u8, position: usize) {
     let mut byte_writer = Writer {
         column_position:position,
@@ -128,7 +154,13 @@ pub fn print_byte(text: u8, position: usize) {
     byte_writer.write_byte(text);
 }
 
-
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> Result {
+        self.write_string(s);
+        Ok(())
+    } 
+}
+#[allow(unused)]
 pub fn print_string(text: &'static str, position: usize) {
 
     let mut string_writer = Writer {
@@ -147,3 +179,24 @@ pub fn print_string(text: &'static str, position: usize) {
     }
 
 }
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+
+#[macro_export]
+macro_rules! print_one {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[doc(hidden)]
+
+pub fn _print(args: fmt::Arguments) {
+
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
+}
+
