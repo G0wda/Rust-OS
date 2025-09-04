@@ -4,9 +4,16 @@ version = "0.1.0"
 edition = "2018"
 
 
+[[bin]]
+name = "blog_os"
+test = true
+bench = false
+
+
+
 [dependencies]
 bootloader = "0.9.32"
-spin = "0.5.2"
+spin = {version= "0.5.2", default-features = false}
 volatile = "0.2.6"
 
 

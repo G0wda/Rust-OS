@@ -187,7 +187,7 @@ macro_rules! print {
 
 
 #[macro_export]
-macro_rules! print_one {
+macro_rules! println {
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
